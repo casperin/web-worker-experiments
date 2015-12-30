@@ -1,0 +1,34 @@
+{
+  "scripts": {
+    "start": "watchify src/js.js -t babelify -o www/js/js.js",
+    "start2": "watchify src/task.js -t babelify -o www/js/task.js"
+  },
+  "babel": {
+    "presets": [
+      "es2015",
+      "stage-0"
+    ]
+  },
+  "eslintConfig": {
+    "root": true,
+    "ecmaFeatures": {
+      "modules": true
+    },
+    "env": {
+      "browser": true,
+      "es6": true
+    }
+  },
+  "dependencies": {
+    "virtual-dom": "^2.1.1"
+  },
+  "devDependencies": {
+    "babel-core": "^6.3.26",
+    "babel-preset-es2015": "^6.3.13",
+    "babel-preset-stage-0": "^6.3.13",
+    "babelify": "^7.2.0",
+    "vdom-as-json": "^1.0.8",
+    "vdom-serialized-patch": "^1.0.2",
+    "watchify": "^3.6.1"
+  }
+}
