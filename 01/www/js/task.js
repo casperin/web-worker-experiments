@@ -869,7 +869,7 @@ if (typeof document !== 'undefined') {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"min-document":52}],26:[function(require,module,exports){
+},{"min-document":51}],26:[function(require,module,exports){
 "use strict";
 
 module.exports = function isObject(x) {
@@ -2306,28 +2306,85 @@ function appendPatch(apply, patch) {
 }
 
 },{"../vnode/handle-thunk":39,"../vnode/is-thunk":40,"../vnode/is-vnode":42,"../vnode/is-vtext":43,"../vnode/is-widget":44,"../vnode/vpatch":47,"./diff-props":49,"x-is-array":27}],51:[function(require,module,exports){
+
+},{}],52:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var workers = [];
+var subscribers = {};
+
+var IS_WORKER = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
+
+if (IS_WORKER) {
+  self.addEventListener('message', function (_ref) {
+    var data = _ref.data;
+
+    data = JSON.parse(data);
+    if (subscribers[data.key]) subscribers[data.key].forEach(function (fn) {
+      return fn(data.data);
+    });
+  });
+}
+
+var addWorker = exports.addWorker = function addWorker(worker) {
+  if (typeof worker === 'string') worker = new Worker(worker); // create worker from path
+  worker.addEventListener('message', function (_ref2) {
+    var data = _ref2.data;
+
+    data = JSON.parse(data);
+    publish(data.key, data.data);
+  }, false);
+  workers.push(worker);
+};
+
+var subscribe = exports.subscribe = function subscribe(key, fn) {
+  if (!subscribers[key]) subscribers[key] = [];
+  subscribers[key].push(fn);
+};
+
+var publish = exports.publish = function publish(key, data) {
+  var json = JSON.stringify({ key: key, data: data });
+  if (IS_WORKER) self.postMessage(json);
+  workers.forEach(function (worker) {
+    return worker.postMessage(json);
+  });
+  if (subscribers[key]) subscribers[key].forEach(function (fn) {
+    return fn(data);
+  });
+};
+
+},{}],53:[function(require,module,exports){
 'use strict';
 
 var _virtualDom = require('virtual-dom');
 
 var _vdomSerializedPatch = require('vdom-serialized-patch');
 
+var _hubble = require('./hubble');
+
 var node1 = (0, _virtualDom.h)();
 var node2 = (0, _virtualDom.h)('div', { style: { 'font-weight': 'bold' } }, 'Ping!');
 var node3 = (0, _virtualDom.h)('div', { style: { 'color': 'red' } }, 'Pong!');
 
-self.addEventListener('message', function (e) {
-  if (+e.data % 2 === 0) postPatch(node2, node3);else postPatch(node3, node2);
-}, false);
+(0, _hubble.subscribe)('foo', function (data) {
+  console.log('yo!', data);
+});
+
+(0, _hubble.subscribe)('update', function (data) {
+  if (data % 2 === 0) postPatch(node2, node3);else postPatch(node3, node2);
+});
 
 var postPatch = function postPatch(n1, n2) {
   var patch = (0, _virtualDom.diff)(n1, n2);
   var serializedPatch = (0, _vdomSerializedPatch.serialize)(patch);
-  self.postMessage(serializedPatch);
+  (0, _hubble.publish)('patch', serializedPatch);
 };
 
 postPatch(node1, node2);
 
-},{"vdom-serialized-patch":4,"virtual-dom":20}],52:[function(require,module,exports){
+(0, _hubble.publish)('super', 123);
 
-},{}]},{},[51]);
+},{"./hubble":52,"vdom-serialized-patch":4,"virtual-dom":20}]},{},[53]);

@@ -1,7 +1,8 @@
 {
   "scripts": {
     "start": "watchify src/js.js -t babelify -o www/js/js.js",
-    "start2": "watchify src/task.js -t babelify -o www/js/task.js"
+    "start2": "watchify src/task.js -t babelify -o www/js/task.js",
+    "start3": "watchify src/task2.js -t babelify -o www/js/task2.js"
   },
   "babel": {
     "presets": [

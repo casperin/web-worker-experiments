@@ -2310,6 +2310,55 @@ function appendPatch(apply, patch) {
 },{}],52:[function(require,module,exports){
 'use strict';
 
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var workers = [];
+var subscribers = {};
+
+var IS_WORKER = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
+
+if (IS_WORKER) {
+  self.addEventListener('message', function (_ref) {
+    var data = _ref.data;
+
+    data = JSON.parse(data);
+    if (subscribers[data.key]) subscribers[data.key].forEach(function (fn) {
+      return fn(data.data);
+    });
+  });
+}
+
+var addWorker = exports.addWorker = function addWorker(worker) {
+  if (typeof worker === 'string') worker = new Worker(worker); // create worker from path
+  worker.addEventListener('message', function (_ref2) {
+    var data = _ref2.data;
+
+    data = JSON.parse(data);
+    publish(data.key, data.data);
+  }, false);
+  workers.push(worker);
+};
+
+var subscribe = exports.subscribe = function subscribe(key, fn) {
+  if (!subscribers[key]) subscribers[key] = [];
+  subscribers[key].push(fn);
+};
+
+var publish = exports.publish = function publish(key, data) {
+  var json = JSON.stringify({ key: key, data: data });
+  if (IS_WORKER) self.postMessage(json);
+  workers.forEach(function (worker) {
+    return worker.postMessage(json);
+  });
+  if (subscribers[key]) subscribers[key].forEach(function (fn) {
+    return fn(data);
+  });
+};
+
+},{}],53:[function(require,module,exports){
+'use strict';
+
 var _virtualDom = require('virtual-dom');
 
 var _createElement = require('virtual-dom/create-element');
@@ -2318,20 +2367,27 @@ var _createElement2 = _interopRequireDefault(_createElement);
 
 var _vdomSerializedPatch = require('vdom-serialized-patch');
 
+var _hubble = require('./hubble');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var worker = new Worker('js/task.js');
+(0, _hubble.addWorker)('js/task.js');
+(0, _hubble.addWorker)('js/task2.js');
+
+(0, _hubble.subscribe)('bar', function (data) {
+  console.log('from worker!', data);
+});
 
 var container = document.querySelector('#container');
 var button = document.querySelector('#btn');
 
-worker.addEventListener('message', function (e) {
-  return (0, _vdomSerializedPatch.patch)(container, e.data);
-}, false);
+(0, _hubble.subscribe)('patch', function (data) {
+  (0, _vdomSerializedPatch.patch)(container, data);
+});
 
 var counter = 0;
 button.addEventListener('click', function (_) {
-  worker.postMessage(counter++);
+  (0, _hubble.publish)('update', counter++);
 }, false);
 
-},{"vdom-serialized-patch":4,"virtual-dom":20,"virtual-dom/create-element":17}]},{},[52]);
+},{"./hubble":52,"vdom-serialized-patch":4,"virtual-dom":20,"virtual-dom/create-element":17}]},{},[53]);
